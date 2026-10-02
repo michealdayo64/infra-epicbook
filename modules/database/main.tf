@@ -6,8 +6,8 @@ resource "azurerm_mysql_flexible_server" "epicbook" {
   administrator_login    = var.db_admin_username
   administrator_password = var.db_admin_password
 
-   sku_name = "B_Standard_B1ms"
-   #tier     = "Burstable"
+  sku_name = "B_Standard_B1ms"
+  #tier     = "Burstable"
 
   version = "8.0.21"
 

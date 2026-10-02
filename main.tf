@@ -12,18 +12,18 @@ resource "azurerm_resource_group" "rg" {
 module "network" {
   source = "./modules/network"
 
-  rg-epicbook      = azurerm_resource_group.rg.name
-  location         = azurerm_resource_group.rg.location
-  backend_app_port = var.backend_app_port
-  vnet-epicbook    = var.vnet-epicbook
-  vnet_cidr        = var.vnet_cidr
-  subnet-epicbook  = var.subnet-epicbook
-  subnet_cidr      = var.subnet_cidr
-  database_subnet     = var.database_subnet
+  rg-epicbook          = azurerm_resource_group.rg.name
+  location             = azurerm_resource_group.rg.location
+  backend_app_port     = var.backend_app_port
+  vnet-epicbook        = var.vnet-epicbook
+  vnet_cidr            = var.vnet_cidr
+  subnet-epicbook      = var.subnet-epicbook
+  subnet_cidr          = var.subnet_cidr
+  database_subnet      = var.database_subnet
   database_subnet_cidr = var.database_subnet_cidr
-  nsg-epicbook     = var.nsg-epicbook
-  allowed_admin_ip = var.allowed_admin_ip
-  pipeline_agent_ip = var.pipeline_agent_ip
+  nsg-epicbook         = var.nsg-epicbook
+  allowed_admin_ip     = var.allowed_admin_ip
+  pipeline_agent_ip    = var.pipeline_agent_ip
 }
 
 module "compute" {
