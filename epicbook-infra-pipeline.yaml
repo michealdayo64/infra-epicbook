@@ -1,1 +1,375 @@
-hello
+
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  name: epicbook-agent-pool
+
+variables:
+  terraformVersion: '1.15.7'
+  workingDirectory: '$(System.DefaultWorkingDirectory)'
+
+stages:
+
+# ============================================================
+# 1. TERRAFORM FORMAT
+# ============================================================
+
+- stage: TerraformFmt
+  displayName: 'Terraform Format'
+
+  jobs:
+  - job: Fmt
+    displayName: 'Terraform fmt'
+
+    steps:
+    - checkout: self
+
+    - task: TerraformInstaller@1
+      displayName: 'Install Terraform'
+      inputs:
+        terraformVersion: '$(terraformVersion)'
+
+    - bash: |
+        cd "$(workingDirectory)"
+
+        terraform fmt -check -recursive
+
+      displayName: 'Check Terraform Formatting'
+
+
+# ============================================================
+# 2. TERRAFORM INIT
+# ============================================================
+
+- stage: TerraformInit
+  displayName: 'Terraform Init'
+
+  dependsOn: TerraformFmt
+  condition: succeeded()
+
+  jobs:
+  - job: Init
+    displayName: 'Initialize Terraform'
+
+    steps:
+    - checkout: self
+
+    - task: TerraformInstaller@1
+      displayName: 'Install Terraform'
+      inputs:
+        terraformVersion: '$(terraformVersion)'
+
+    - task: DownloadSecureFile@1
+      name: sshKey
+      displayName: 'Download SSH Private Key'
+
+      inputs:
+        secureFile: 'id_ed25519'
+
+    - bash: |
+        chmod 600 "$(sshKey.secureFilePath)"
+
+        echo "SSH private key prepared."
+
+      displayName: 'Prepare SSH Private Key'
+
+    - task: AzureCLI@2
+      displayName: 'Terraform Init'
+
+      inputs:
+        azureSubscription: 'azure-epicbook-connection'
+        scriptType: bash
+        scriptLocation: inlineScript
+        workingDirectory: '$(workingDirectory)'
+
+        inlineScript: |
+
+          echo "Checking Azure subscription..."
+
+          az account show
+
+          echo "Initializing Terraform..."
+
+          terraform init \
+            -input=false \
+            -reconfigure
+
+
+# ============================================================
+# 3. TERRAFORM VALIDATE
+# ============================================================
+
+- stage: TerraformValidate
+  displayName: 'Terraform Validate'
+
+  dependsOn: TerraformInit
+  condition: succeeded()
+
+  jobs:
+  - job: Validate
+    displayName: 'Validate Terraform'
+
+    steps:
+    - checkout: self
+
+    - task: TerraformInstaller@1
+      displayName: 'Install Terraform'
+
+      inputs:
+        terraformVersion: '$(terraformVersion)'
+
+    - task: AzureCLI@2
+      displayName: 'Terraform Init'
+
+      inputs:
+        azureSubscription: 'azure-epicbook-connection'
+        scriptType: bash
+        scriptLocation: inlineScript
+        workingDirectory: '$(workingDirectory)'
+
+        inlineScript: |
+
+          terraform init \
+            -input=false \
+            -reconfigure
+
+    - bash: |
+        cd "$(workingDirectory)"
+
+        terraform validate
+
+      displayName: 'Terraform Validate'
+
+
+# ============================================================
+# 4. TERRAFORM PLAN
+# ============================================================
+
+- stage: TerraformPlan
+  displayName: 'Terraform Plan'
+
+  dependsOn: TerraformValidate
+  condition: succeeded()
+
+  jobs:
+  - job: Plan
+    displayName: 'Create Terraform Plan'
+
+    steps:
+    - checkout: self
+
+    - task: TerraformInstaller@1
+      displayName: 'Install Terraform'
+
+      inputs:
+        terraformVersion: '$(terraformVersion)'
+
+    # --------------------------------------------------------
+    # SSH private key
+    # --------------------------------------------------------
+
+    - task: DownloadSecureFile@1
+      name: sshKey
+      displayName: 'Download SSH Private Key'
+
+      inputs:
+        secureFile: 'id_ed25519'
+
+    - bash: |
+        chmod 600 "$(sshKey.secureFilePath)"
+
+      displayName: 'Prepare SSH Key'
+
+    # --------------------------------------------------------
+    # Terraform Init
+    # --------------------------------------------------------
+
+    - task: AzureCLI@2
+      displayName: 'Terraform Init'
+
+      inputs:
+        azureSubscription: 'azure-epicbook-connection'
+        scriptType: bash
+        scriptLocation: inlineScript
+        workingDirectory: '$(workingDirectory)'
+
+        inlineScript: |
+
+          terraform init \
+            -input=false \
+            -reconfigure
+
+    # --------------------------------------------------------
+    # Terraform Plan
+    # --------------------------------------------------------
+
+    - task: AzureCLI@2
+      displayName: 'Terraform Plan'
+
+      inputs:
+        azureSubscription: 'azure-epicbook-connection'
+        scriptType: bash
+        scriptLocation: inlineScript
+        workingDirectory: '$(workingDirectory)'
+
+        inlineScript: |
+
+          echo "Creating Terraform execution plan..."
+
+          terraform plan \
+            -input=false \
+            -out=tfplan
+
+      env:
+        TF_VAR_db_admin_username: $(mysqlAdminUsername)
+        TF_VAR_db_admin_password: $(mysqlAdminPassword)
+
+    # --------------------------------------------------------
+    # Publish Plan
+    # --------------------------------------------------------
+
+    - task: PublishPipelineArtifact@1
+      displayName: 'Publish Terraform Plan'
+
+      inputs:
+        targetPath: '$(workingDirectory)/tfplan'
+        artifact: 'terraform-plan'
+        publishLocation: 'pipeline'
+
+
+# ============================================================
+# 5. TERRAFORM APPLY
+# ============================================================
+
+- stage: TerraformApply
+  displayName: 'Terraform Apply'
+
+  dependsOn: TerraformPlan
+
+  condition: succeeded()
+
+  jobs:
+  - deployment: Apply
+    displayName: 'Apply Terraform Infrastructure'
+
+    environment: 'epicbook-production'
+
+    strategy:
+      runOnce:
+
+        deploy:
+
+          steps:
+
+          - checkout: self
+
+          # --------------------------------------------------
+          # Install Terraform
+          # --------------------------------------------------
+
+          - task: TerraformInstaller@1
+            displayName: 'Install Terraform'
+
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          # --------------------------------------------------
+          # Download SSH private key
+          # --------------------------------------------------
+
+          - task: DownloadSecureFile@1
+            name: sshKey
+            displayName: 'Download SSH Private Key'
+
+            inputs:
+              secureFile: 'id_ed25519'
+
+          - bash: |
+              chmod 600 "$(sshKey.secureFilePath)"
+
+            displayName: 'Prepare SSH Key'
+
+          # --------------------------------------------------
+          # Terraform Init
+          # --------------------------------------------------
+
+          - task: AzureCLI@2
+            displayName: 'Terraform Init'
+
+            inputs:
+              azureSubscription: 'azure-epicbook-connection'
+              scriptType: bash
+              scriptLocation: inlineScript
+              workingDirectory: '$(workingDirectory)'
+
+              inlineScript: |
+
+                echo "Initializing Terraform..."
+
+                terraform init \
+                  -input=false \
+                  -reconfigure
+
+          # --------------------------------------------------
+          # Download Terraform Plan
+          # --------------------------------------------------
+
+          - task: DownloadPipelineArtifact@2
+            displayName: 'Download Terraform Plan'
+
+            inputs:
+              artifact: 'terraform-plan'
+              path: '$(workingDirectory)'
+
+          # --------------------------------------------------
+          # Terraform Apply
+          # --------------------------------------------------
+
+          - task: AzureCLI@2
+            displayName: 'Terraform Apply'
+
+            inputs:
+              azureSubscription: 'azure-epicbook-connection'
+              scriptType: bash
+              scriptLocation: inlineScript
+              workingDirectory: '$(workingDirectory)'
+
+              inlineScript: |
+
+                echo "Applying Terraform infrastructure..."
+
+                terraform apply \
+                  -input=false \
+                  tfplan
+
+            env:
+              TF_VAR_db_admin_username: $(TF_VAR_db_admin_username)
+              TF_VAR_db_admin_password: $(TF_VAR_db_admin_password)
+
+          # --------------------------------------------------
+          # Terraform Outputs
+          # --------------------------------------------------
+
+          - task: AzureCLI@2
+            displayName: 'Terraform Outputs'
+
+            inputs:
+              azureSubscription: 'azure-epicbook-connection'
+              scriptType: bash
+              scriptLocation: inlineScript
+              workingDirectory: '$(workingDirectory)'
+
+              inlineScript: |
+
+                echo "Terraform deployment outputs:"
+
+                terraform output
+
