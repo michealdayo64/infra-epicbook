@@ -48,7 +48,7 @@ resource "azurerm_linux_virtual_machine" "frontend" {
 
   admin_ssh_key {
     username   = var.admin_username
-    public_key = file(var.ssh_public_key_path)
+    public_key = file("${path.module}/${var.ssh_public_key_path}")
   }
 
   os_disk {
