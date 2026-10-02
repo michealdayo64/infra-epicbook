@@ -24,25 +24,39 @@ stages:
 
 - stage: TerraformFmt
   displayName: 'Terraform Format'
-
   jobs:
   - job: Fmt
-    displayName: 'Terraform fmt'
-
+    displayName: 'Terraform Format Check'
     steps:
+
     - checkout: self
 
-    - task: TerraformInstaller@1
+    - bash: |
+        set -e
+
+        TERRAFORM_VERSION="1.15.7"
+
+        if command -v terraform >/dev/null 2>&1; then
+          echo "Terraform already installed:"
+          terraform version
+        else
+          echo "Installing Terraform ${TERRAFORM_VERSION}..."
+
+          wget -q "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+
+          unzip -o "terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+
+          sudo mv terraform /usr/local/bin/terraform
+
+          rm "terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+
+          terraform version
+        fi
       displayName: 'Install Terraform'
-      inputs:
-        terraformVersion: '$(terraformVersion)'
 
     - bash: |
-        cd "$(workingDirectory)"
-
         terraform fmt -check -recursive
-
-      displayName: 'Check Terraform Formatting'
+      displayName: 'Terraform Format Check'
 
 
 # ============================================================
