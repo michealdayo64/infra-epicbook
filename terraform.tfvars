@@ -26,7 +26,7 @@ vnet_cidr = "10.0.0.0/16"
 
 # SSH public key
 # Use your own local public key path.
-ssh_public_key_path = "~/.ssh/id_ed25519.pub"
+ssh_public_key_path = "id_ed25519.pub"
 
 # Replace with your actual IP /32.
 allowed_admin_ip = "102.89.46.228/32"
