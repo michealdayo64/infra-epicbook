@@ -56,7 +56,7 @@ resource "azurerm_network_security_group" "frontend_nsg_vm" {
     destination_address_prefix = "*"
   }
 
-  /*security_rule {
+  security_rule {
     name                       = "Allow-SSH-Pipeline"
     priority                   = 130
     direction                  = "Inbound"
@@ -66,7 +66,7 @@ resource "azurerm_network_security_group" "frontend_nsg_vm" {
     destination_port_range     = "22"
     source_address_prefix      = var.pipeline_agent_ip
     destination_address_prefix = "*"
-  }*/
+  }
 
   security_rule {
     name                       = "http"

@@ -32,7 +32,7 @@ ssh_public_key_path = "id_ed25519.pub"
 allowed_admin_ip = "102.89.46.228/32"
 
 # Replace with your Azure DevOps agent's reachable IP /32.
-pipeline_agent_ip = "REPLACE_WITH_PIPELINE_AGENT_IP/32"
+pipeline_agent_ip = "172.16.0.4/32"
 
 # Node.js backend
 backend_app_port = 3000

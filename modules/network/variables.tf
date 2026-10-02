@@ -52,3 +52,8 @@ variable "allowed_admin_ip" {
   description = "The IP address allowed to access the VMs via SSH."
   type        = string
 }
+
+variable "pipeline_agent_ip" {
+  description = "The IP address of the Azure DevOps pipeline agent allowed to access the VMs via SSH."
+  type        = string
+}

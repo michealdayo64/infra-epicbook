@@ -23,6 +23,7 @@ module "network" {
   database_subnet_cidr = var.database_subnet_cidr
   nsg-epicbook     = var.nsg-epicbook
   allowed_admin_ip = var.allowed_admin_ip
+  pipeline_agent_ip = var.pipeline_agent_ip
 }
 
 module "compute" {
