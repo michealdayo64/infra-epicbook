@@ -108,8 +108,3 @@ variable "db_name" {
   type        = string
   default     = "epicbook"
 }
-
-variable "pipeline_agent_ip" {
-  description = "The IP address of the Azure DevOps pipeline agent allowed to access the VMs via SSH."
-  type        = string
-}
