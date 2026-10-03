@@ -12,8 +12,13 @@ pool:
   name: epicbook-agent-pool
 
 variables:
-  terraformVersion: '1.15.7'
-  workingDirectory: '$(System.DefaultWorkingDirectory)'
+  - group: Epicbook-mysql-secrets
+
+  - name: terraformVersion
+    value: '1.15.7'
+
+  - name: workingDirectory
+    value: '$(System.DefaultWorkingDirectory)'
 
 stages:
 
